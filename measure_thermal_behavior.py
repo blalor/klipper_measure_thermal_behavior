@@ -8,12 +8,12 @@ import json
 
 ######### META DATA #################
 # For data collection organizational purposes
-USER_ID = 'yolo-dubstep#8033'            # e.g. Discord handle
-PRINTER_MODEL = 'ratrig_vcore3_400'      # e.g. 'voron_v2_350'
-HOME_TYPE = 'microswitch_probe'          # e.g. 'nozzle_pin', 'microswitch_probe', etc.
-PROBE_TYPE = 'euclid'         # e.g. 'klicky', 'omron', 'bltouch', etc.
-X_RAILS = 'mgn12'            # e.g. '1x_mgn12_front', '2x_mgn9'
-BACKERS = 'stainless_x_y'            # e.g. 'steel_x_y', 'Ti_x-steel_y', 'mgn9_y'
+USER_ID = ''            # e.g. Discord handle
+PRINTER_MODEL = ''      # e.g. 'voron_v2_350'
+HOME_TYPE = ''          # e.g. 'nozzle_pin', 'microswitch_probe', etc.
+PROBE_TYPE = ''         # e.g. 'klicky', 'omron', 'bltouch', etc.
+X_RAILS = ''            # e.g. '1x_mgn12_front', '2x_mgn9'
+BACKERS = ''            # e.g. 'steel_x_y', 'Ti_x-steel_y', 'mgn9_y'
 NOTES = '''
 '''
 #####################################
