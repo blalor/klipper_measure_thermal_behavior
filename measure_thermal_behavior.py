@@ -8,14 +8,14 @@ import json
 
 ######### META DATA #################
 # For data collection organizational purposes
-USER_ID = ''            # e.g. Discord handle
-PRINTER_MODEL = ''      # e.g. 'voron_v2_350'
-HOME_TYPE = ''          # e.g. 'nozzle_pin', 'microswitch_probe', etc.
-PROBE_TYPE = ''         # e.g. 'klicky', 'omron', 'bltouch', etc.
-X_RAILS = ''            # e.g. '1x_mgn12_front', '2x_mgn9'
-BACKERS = ''            # e.g. 'steel_x_y', 'Ti_x-steel_y', 'mgn9_y'
-NOTES = ''              # anything note-worthy about this particular run,
-                        #     no "=" characters
+USER_ID = 'yolo-dubstep#8033'            # e.g. Discord handle
+PRINTER_MODEL = 'ratrig_vcore3_400'      # e.g. 'voron_v2_350'
+HOME_TYPE = 'microswitch_probe'          # e.g. 'nozzle_pin', 'microswitch_probe', etc.
+PROBE_TYPE = 'euclid'         # e.g. 'klicky', 'omron', 'bltouch', etc.
+X_RAILS = 'mgn12'            # e.g. '1x_mgn12_front', '2x_mgn9'
+BACKERS = 'stainless_x_y'            # e.g. 'steel_x_y', 'Ti_x-steel_y', 'mgn9_y'
+NOTES = '''
+'''
 #####################################
 
 ######### CONFIGURATION #############
@@ -25,24 +25,26 @@ BED_TEMPERATURE = 105               # bed temperature for measurements
 HE_TEMPERATURE = 100                # extruder temperature for measurements
 MEASURE_INTERVAL = 1
 N_SAMPLES = 3
-HOT_DURATION = 3                    # time after bed temp reached to continue
+HOT_DURATION = 1                    # time after bed temp reached to continue
                                     # measuring, in hours
-COOL_DURATION = 0                   # hours to continue measuring after heaters
+COOL_DURATION = 1                   # hours to continue measuring after heaters
                                     # are disabled
 SOAK_TIME = 5                       # minutes to wait for bed to heatsoak after reaching temp
 MEASURE_GCODE = 'G28 Z'             # G-code called on repeated measurements, single line/macro only
-QGL_CMD = "QUAD_GANTRY_LEVEL"       # command for QGL; e.g. "QUAD_GANTRY_LEVEL" or None if no QGL.
+QGL_CMD = "z_tilt_adjust"       # command for QGL; e.g. "QUAD_GANTRY_LEVEL" or None if no QGL.
 MESH_CMD = "BED_MESH_CALIBRATE"
 
 # Full config section name of the frame temperature sensor
-FRAME_SENSOR = "temperature_sensor frame"
+FRAME_SENSOR = ""
 # chamber thermistor config name. Change to match your own, or "" if none
 # will also work with temperature_fan configs
-CHAMBER_SENSOR = "temperature_sensor chamber"
+CHAMBER_SENSOR = ""
 # Extra temperature sensors to collect. Use same format as above but seperate
 # quoted names with commas (if more than one).
-EXTRA_SENSORS = {"frame1": "temperature_sensor frame1",
-                 "z_switch": "temperature_sensor z_switch"}
+EXTRA_SENSORS = {
+    # "frame1": "temperature_sensor frame1",
+    # "z_switch": "temperature_sensor z_switch",
+}
 
 #####################################
 
@@ -67,10 +69,10 @@ def gather_metadata():
         rot_dist = config_z['rotation_distance']
         steps_per = config_z['full_steps_per_rotation']
         micro = config_z['microsteps']
-        if 'gear_ratio' in config_z.keys():
+        if 'gear_ratio' in config_z.keys() and config_z['gear_ratio']:
             gear_ratio_conf = config_z['gear_ratio']
             if type(gear_ratio_conf) is str:
-                gear_ratio_conf = gear_ratio_conf.split(':')             
+                gear_ratio_conf = gear_ratio_conf.split(':')
             gear_ratio = float(gear_ratio_conf[0][0])
             for reduction in gear_ratio_conf[1:]:
                 gear_ratio = gear_ratio/float(reduction)
@@ -113,16 +115,6 @@ def gather_metadata():
     return meta
 
 
-def write_metadata(meta):
-    with open(DATA_FILENAME, 'w') as dataout:
-        dataout.write('### METADATA ###\n')
-        for section in meta.keys():
-            print(section)
-            dataout.write("## %s ##\n" % section.upper())
-            for item in meta[section]:
-                dataout.write('# %s=%s\n' % (item, meta[section][item]))
-        dataout.write('### METADATA END ###\n')
-
 def query_axis_bounds(axis):
     resp = get(BASE_URL + '/printer/objects/query?configfile').json()
     config = resp['result']['status']['configfile']['settings']
@@ -132,7 +124,8 @@ def query_axis_bounds(axis):
     axis_min = config[stepper]['position_min']
     axis_max = config[stepper]['position_max']
 
-    return(axis_min, axis_max) 
+    return(axis_min, axis_max)
+
 
 def query_xy_middle():
     resp = get(BASE_URL + '/printer/objects/query?configfile').json()
@@ -184,8 +177,8 @@ def park_head_high():
     ymin, ymax = query_axis_bounds('y')
     zmin, zmax = query_axis_bounds('z')
 
-    xpark = xmax
-    ypark = ymax
+    xpark = xmax/2
+    ypark = ymax/2
     zpark = zmax * 0.8
 
     park_cmd = "G1 X%.1f Y%.1f Z%.1f F1000" % (xpark, ypark, zpark)
@@ -209,9 +202,9 @@ def set_hetemp(t=0):
 
 
 def gantry_leveled():
-    url = BASE_URL + '/printer/objects/query?quad_gantry_level'
+    url = BASE_URL + '/printer/objects/query?z_tilt'
     resp = get(url).json()['result']
-    return resp['status']['quad_gantry_level']['applied']
+    return resp['status']['z_tilt']['applied']
 
 
 def qgl(retries=30):
@@ -244,7 +237,6 @@ def clear_bed_mesh():
 
 
 def take_bed_mesh():
-    mesh_received = False
     cmd = MESH_CMD
 
     print("Taking bed mesh measurement...", end='', flush=True)
@@ -331,6 +323,19 @@ def query_mcu_z_pos():
     return None
 
 
+def measure_probe():
+    result = None
+
+    send_gcode(cmd='PROBE')
+    gcode_cache = get_cached_gcode(n=1)
+
+    m = re.match(r"// Result is z=([0-9.]+)", gcode_cache[0]["message"])
+    if m:
+        result = float(m[1])
+
+    return result
+
+
 def wait_for_bedtemp(soak_time=5):
     print('Heating started')
     while(1):
@@ -343,21 +348,30 @@ def wait_for_bedtemp(soak_time=5):
 
 
 def collect_datapoint(index):
+    ## leaves the probe in contact with the bed; next command should raise it
+    # probe = measure_probe()
+
     if not send_gcode(MEASURE_GCODE):
         set_bedtemp()
         set_hetemp()
         err = 'MEASURE_GCODE (%s) failed. Stopping.' % MEASURE_GCODE
         raise RuntimeError(err)
+
     stamp = datetime.now().strftime("%Y/%m/%d-%H:%M:%S")
+
     pos = query_mcu_z_pos()
     t_sensors = query_temp_sensors()
     datapoint = {
         stamp: {
             'sample_index': index,
             'mcu_z': pos,
+            # 'probe': probe,
             **t_sensors
-            }
+        }
     }
+
+    print(json.dumps({"datapoint": datapoint}, default=str))
+
     return datapoint
 
 
@@ -393,7 +407,12 @@ def measure():
 def main():
     global last_measurement, start_time, temps
     metadata = gather_metadata()
+    print(json.dumps({"metadata": metadata}, default=str))
+
     print("Starting!\nHoming...", end='', flush=True)
+
+    send_gcode("euclid_probe_begin_batch")
+
     # Home all
     if send_gcode('G28'):
         print("DONE")
@@ -412,7 +431,7 @@ def main():
     else:
         raise RuntimeError("Failed to home. Aborted.")
 
-    send_gcode('SET_FRAME_COMP enable=0')
+    # send_gcode('SET_FRAME_COMP enable=0')
 
     # Take preheat mesh
     take_bed_mesh()
@@ -423,6 +442,8 @@ def main():
     pre_data = {'time': pre_time,
                 'temps': pre_temps,
                 'mesh': pre_mesh}
+
+    print(json.dumps({"pre_mesh": pre_data}, default=str))
 
     set_bedtemp(BED_TEMPERATURE)
     set_hetemp(HE_TEMPERATURE)
@@ -445,6 +466,7 @@ def main():
                  'temps': cold_temps,
                  'mesh': cold_mesh}
 
+    print(json.dumps({"cold_mesh": cold_data}, default=str))
     print('Cold mesh taken, waiting for %s minutes' % (HOT_DURATION * 60))
 
     while(1):
@@ -464,6 +486,7 @@ def main():
                 'temps': hot_temps,
                 'mesh': hot_mesh}
 
+    print(json.dumps({"hot_mesh": hot_data}, default=str))
     print('Hot mesh taken, writing to file')
 
     print('Hot measurements complete!')
@@ -486,9 +509,11 @@ def main():
     with open(DATA_FILENAME, "w") as out_file:
         json.dump(output, out_file, indent=4, sort_keys=True, default=str)
 
+    send_gcode("euclid_probe_end_batch")
+
     set_bedtemp()
     set_hetemp()
-    send_gcode('SET_FRAME_COMP enable=1')
+    # send_gcode('SET_FRAME_COMP enable=1')
     print('Measurements complete!')
 
 
@@ -498,5 +523,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         set_bedtemp()
         set_hetemp()
-        send_gcode('SET_FRAME_COMP enable=1')
+        # send_gcode('SET_FRAME_COMP enable=1')
         print("\nAborted by user!")
