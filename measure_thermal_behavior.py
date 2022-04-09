@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
+# -*- encoding: utf-8 -*-
+
 from datetime import timedelta, datetime
-from os import error
 from time import sleep
 from requests import get, post
 import re
@@ -9,13 +10,14 @@ import json
 ######### META DATA #################
 # For data collection organizational purposes
 USER_ID = ''            # e.g. Discord handle
-PRINTER_MODEL = ''      # e.g. 'voron_v2_350'
+PRINTER_MODEL = ''      # e.g. 'ratrig_vcore3_400'
 HOME_TYPE = ''          # e.g. 'nozzle_pin', 'microswitch_probe', etc.
 PROBE_TYPE = ''         # e.g. 'klicky', 'omron', 'bltouch', etc.
 X_RAILS = ''            # e.g. '1x_mgn12_front', '2x_mgn9'
 BACKERS = ''            # e.g. 'steel_x_y', 'Ti_x-steel_y', 'mgn9_y'
 NOTES = '''
-'''
+''' ## anything else relevant
+
 #####################################
 
 ######### CONFIGURATION #############
@@ -370,7 +372,7 @@ def collect_datapoint(index):
         }
     }
 
-    print(json.dumps({"datapoint": datapoint}, default=str))
+    # print(json.dumps({"datapoint": datapoint}, default=str))
 
     return datapoint
 
@@ -407,7 +409,7 @@ def measure():
 def main():
     global last_measurement, start_time, temps
     metadata = gather_metadata()
-    print(json.dumps({"metadata": metadata}, default=str))
+    # print(json.dumps({"metadata": metadata}, default=str))
 
     print("Starting!\nHoming...", end='', flush=True)
 
@@ -443,7 +445,7 @@ def main():
                 'temps': pre_temps,
                 'mesh': pre_mesh}
 
-    print(json.dumps({"pre_mesh": pre_data}, default=str))
+    # print(json.dumps({"pre_mesh": pre_data}, default=str))
 
     set_bedtemp(BED_TEMPERATURE)
     set_hetemp(HE_TEMPERATURE)
@@ -466,7 +468,7 @@ def main():
                  'temps': cold_temps,
                  'mesh': cold_mesh}
 
-    print(json.dumps({"cold_mesh": cold_data}, default=str))
+    # print(json.dumps({"cold_mesh": cold_data}, default=str))
     print('Cold mesh taken, waiting for %s minutes' % (HOT_DURATION * 60))
 
     while(1):
@@ -486,7 +488,7 @@ def main():
                 'temps': hot_temps,
                 'mesh': hot_mesh}
 
-    print(json.dumps({"hot_mesh": hot_data}, default=str))
+    # print(json.dumps({"hot_mesh": hot_data}, default=str))
     print('Hot mesh taken, writing to file')
 
     print('Hot measurements complete!')
